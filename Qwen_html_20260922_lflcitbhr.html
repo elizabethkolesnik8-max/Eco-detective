@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Эко-Детектив: Тайна кампуса</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 18px;
+    background: #1a1a2e;
+    color: #eaeaea;
+    min-height: 100vh;
+    overflow-x: hidden;
+    line-height: 1.6;
+  }
+
+  .background {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    z-index: -2;
+    transition: opacity 1s ease-in-out;
+  }
+
+  .overlay {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(26, 26, 46, 0.85);
+    z-index: -1;
+  }
+
+  .stats {
+    position: fixed;
+    top: 15px; right: 15px;
+    background: rgba(26, 26, 46, 0.9);
+    border: 1px solid #4ecca3;
+    border-radius: 10px;
+    padding: 10px 15px;
+    font-size: 14px;
+    z-index: 100;
+    backdrop-filter: blur(5px);
+    box-shadow: 0 4px 15px rgba(78, 204, 163, 0.2);
+  }
+
+  .stats div { margin: 4px 0; display: flex; justify-content: space-between; gap: 15px; }
+  .stats span.label { color: #4ecca3; font-weight: 600; }
+
+  .toast {
+    position: fixed;
+    top: 20px; left: 50%;
+    transform: translateX(-50%) translateY(-100px);
+    background: rgba(78, 204, 163, 0.95);
+    color: #1a1a2e;
+    padding: 15px 25px;
+    border-radius: 10px;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.4);
+    z-index: 1000;
+    opacity: 0;
+    transition: all 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+    text-align: center;
+    font-weight: 600;
+  }
+
+  .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+  .game-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 40px 20px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    position: relative;
+    z-index: 1;
+  }
+
+  .game-title {
+    text-align: center;
+    font-size: 28px;
+    color: #4ecca3;
+    margin-bottom: 10px;
+    letter-spacing: 1px;
+    text-shadow: 0 0 10px rgba(78, 204, 163, 0.3);
+  }
+
+  .game-subtitle {
+    text-align: center;
+    font-size: 14px;
+    color: #888;
+    margin-bottom: 30px;
+    font-style: italic;
+  }
+
+  .scene {
+    background: rgba(255, 255, 255, 0.05);
+    border-left: 3px solid #4ecca3;
+    border-radius: 8px;
+    padding: 30px;
+    margin-bottom: 25px;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(5px);
+  }
+
+  .scene.active { opacity: 1; transform: translateY(0); }
+
+  .scene-location {
+    color: #4ecca3;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 15px;
+    opacity: 0.9;
+  }
+
+  .scene-text { font-size: 18px; line-height: 1.7; margin-bottom: 25px; color: #eaeaea; }
+
+  .choices {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    opacity: 0;
+    transform: translateY(15px);
+    transition: opacity 0.6s ease 0.3s, transform 0.6s ease 0.3s;
+  }
+
+  .choices.active { opacity: 1; transform: translateY(0); }
+
+  .choice-btn {
+    background: rgba(26, 26, 46, 0.9);
+    border: 2px solid #4ecca3;
+    color: #eaeaea;
+    padding: 14px 20px;
+    font-size: 16px;
+    text-align: left;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-family: inherit;
+    position: relative;
+    overflow: hidden;
+    backdrop-filter: blur(5px);
+  }
+
+  .choice-btn::before {
+    content: '';
+    position: absolute;
+    top: 0; left: -100%;
+    width: 100%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(78, 204, 163, 0.2), transparent);
+    transition: left 0.5s ease;
+  }
+
+  .choice-btn:hover::before { left: 100%; }
+
+  .choice-btn:hover {
+    background: rgba(78, 204, 163, 0.2);
+    border-color: #6ee6b9;
+    transform: translateX(5px);
+    box-shadow: 0 4px 15px rgba(78, 204, 163, 0.3);
+  }
+
+  .choice-btn:active { transform: translateX(5px) scale(0.98); }
+
+  .choice-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    border-color: #666;
+    transform: none;
+  }
+
+  .ending { text-align: center; padding: 40px 20px; }
+
+  .ending h2 {
+    color: #4ecca3;
+    font-size: 32px;
+    margin-bottom: 20px;
+    text-shadow: 0 0 15px rgba(78, 204, 163, 0.4);
+  }
+
+  .ending .result { font-size: 20px; margin: 20px 0; line-height: 1.8; }
+
+  .results-stats {
+    background: rgba(78, 204, 163, 0.1);
+    border-radius: 8px;
+    padding: 20px;
+    margin: 25px 0;
+    text-align: left;
+    display: inline-block;
+    width: 100%;
+    max-width: 500px;
+  }
+
+  .results-stats h3 { color: #4ecca3; margin-bottom: 10px; margin-top: 15px; font-size: 18px; }
+  .results-stats h3:first-child { margin-top: 0; }
+  .results-stats p { margin: 8px 0; font-size: 16px; }
+  .results-stats ul { margin-top: 10px; }
+  .results-stats li { margin: 6px 0; font-size: 15px; }
+
+  .restart-btn {
+    background: #4ecca3;
+    color: #1a1a2e;
+    border: none;
+    padding: 14px 35px;
+    font-size: 16px;
+    font-weight: 600;
+    border-radius: 8px;
+    cursor: pointer;
+    margin-top: 15px;
+    margin-right: 10px;
+    transition: all 0.3s ease;
+    font-family: inherit;
+  }
+
+  .restart-btn:hover {
+    background: #6ee6b9;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(78, 204, 163, 0.4);
+  }
+
+  .restart-btn.secondary {
+    background: transparent;
+    border: 2px solid #4ecca3;
+    color: #4ecca3;
+  }
+
+  .restart-btn.secondary:hover { background: rgba(78, 204, 163, 0.1); }
+
+  @media (max-width: 600px) {
+    body { font-size: 16px; }
+    .game-container { padding: 30px 15px; }
+    .game-title { font-size: 22px; }
+    .scene { padding: 20px; }
+    .scene-text { font-size: 16px; }
+    .choice-btn { padding: 12px 15px; font-size: 15px; }
+    .stats { font-size: 12px; padding: 8px 12px; top: 10px; right: 10px; }
+    .stats div { gap: 10px; }
+    .restart-btn { width: 100%; margin: 10px 0; }
+  }
+</style>
+</head>
+<body>
+
+<div class="background" id="background"></div>
+<div class="overlay"></div>
+
+<div class="toast" id="toast"></div>
+
+<div class="stats">
+  <div>
+    <span class="label">🌱 Эко:</span>
+    <span class="value" id="ecoValue">0</span>
+  </div>
+  <div>
+    <span class="label">⭐ Репутация:</span>
+    <span class="value" id="repValue">0</span>
+  </div>
+</div>
+
+<div class="game-container">
+  <h1 class="game-title">ЭКО-ДЕТЕКТИВ</h1>
+  <p class="game-subtitle">Тайна кампуса</p>
+  <div id="sceneContainer">Загрузка...</div>
+</div>
+
+<script>
+  // === АУДИО СИСТЕМА ===
+  let audioCtx = null;
+
+  function playSound(type) {
+    try {
+      if (!audioCtx) {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (AudioContext) audioCtx = new AudioContext();
+      }
+      if (!audioCtx) return;
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+
+      const osc = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+      osc.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+
+      if (type === 'click') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(300, audioCtx.currentTime + 0.1);
+        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.1);
+      } else if (type === 'achievement') {
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(440, audioCtx.currentTime);
+        osc.frequency.setValueAtTime(554, audioCtx.currentTime + 0.1);
+        osc.frequency.setValueAtTime(659, audioCtx.currentTime + 0.2);
+        gainNode.gain.setValueAtTime(0.15, audioCtx.currentTime);
+        gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.6);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.6);
+      } else if (type === 'tick') {
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+        gainNode.gain.setValueAtTime(0.05, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.05);
+      }
+    } catch (e) { console.log('Audio error:', e); }
+  }
+
+  // === ИГРОВЫЕ ПЕРЕМЕННЫЕ ===
+  let eco = 0;
+  let rep = 0;
+  let currentScene = 0;
+  let achievements = {};
+  let choiceHistory = [];
+  let timerInterval = null;
+
+  const achievementData = {
+    novice: { title: '🌱 Эко-новичок', desc: 'Вы сделали первый шаг к разгадке' },
+    detective: { title: ' Детектив', desc: 'Вы нашли первую серьёзную улику' },
+    hero: { title: '🌟 Герой кампуса', desc: 'Вы спасли кампус и получили лучшую концовку' }
+  };
+
+  // === МАССИВ СЦЕН ===
+  const scenes = [
+    {
+      location: "Кампус колледжа · Раннее утро (7:30)",
+      text: "Туман стелется по мокрому асфальту. Ты идёшь на первую пару, когда нос щиплет едкий, сладковатый запах, похожий на гниющие яблоки с примесью ацетона. У ливневой решётки вода неестественно пенится и отливает кислотно-зелёным. Мимо пробегают студенты, закутанные в шарфы, никто не замечает странной маслянистой плёнки на воде.",
+      background: "https://images.unsplash.com/photo-1541336724128-8498ea5e75a4?w=1920&q=80",
+      choices: [
+        { text: "🔍 Присесть и понюхать жидкость, пытаясь определить химический состав", eco: 2, rep: 0, next: 1 },
+        { text: "📱 Снять видео на телефон в режиме «без звука», чтобы не привлекать внимания", eco: 1, rep: 1, next: 1 },
+        { text: "🏃 Зажать нос и ускорить шаг. Твоё дело — учёба, а не разборки с коммунальщиками", eco: -1, rep: 0, next: 1 }
+      ]
+    },
+    {
+      location: "Учебный корпус · Коридор (10:15)",
+      text: "После звонка коридор гудит, как растревоженный улей. Ты встречаешь Лену, студентку-экологку с вечно растрёпанным пучком и значком «Fridays For Future». Она принюхивается: «Слышишь? Пахнет как на свалке за городом. Ты что-то знаешь?». Рядом останавливается Дима, староста в идеально выглаженной рубашке, проверяющий уведомления на дорогом смартфоне.",
+      background: "https://images.unsplash.com/photo-1564981797816-1043664bf78d?w=1920&q=80",
+      choices: [
+        { text: "🌿 Шёпотом рассказать Лене о пене у ливнёвки и предложить проверить стоки вместе", eco: 1, rep: 1, next: 2 },
+        { text: " Громко пожаловаться Диме, надеясь, что его связи с администрацией ускорят проверку", eco: 0, rep: 2, next: 2 },
+        { text: " Пожать плечами и сказать: «Просто показалось», решив пока копать в одиночку", eco: 1, rep: -1, next: 2 }
+      ]
+    },
+    {
+      location: "Задний двор колледжа · Сумерки (18:40)",
+      text: "Солнце садится, отбрасывая длинные тени от старых тополей. Ты возвращаешься к решётке. Теперь запах усиливается: к ацетону добавилась нотка жжёной резины. Ты замечаешь свежие, глубокие следы шин грузовика и обрывок этикетки с частью логотипа «Rea...Chem». Рядом приоткрыта ржавая дверь старого хозяйственного сарая, оттуда доносится тихое, ритмичное капанье.",
+      background: "https://images.unsplash.com/photo-1541336724128-8498ea5e75a4?w=1920&q=80",
+      choices: [
+        { text: "🧪 Аккуратно набрать пробу мутной жидкости в пустую бутылку для анализа", eco: 2, rep: 0, next: 3 },
+        { text: "📋 Вспышкой телефона сфотографировать этикетку и следы, стараясь не ступить в лужу", eco: 1, rep: 1, next: 3 },
+        { text: " Бесшумно приоткрыть дверь сарая и заглянуть внутрь, рискуя быть замеченным", eco: 0, rep: 2, next: 3 }
+      ]
+    },
+    {
+      location: "Кафедра химии · Кабинет профессора Громова (11:00)",
+      text: "Кабинет завален книгами и пыльными колбами. Профессор Громов, эколог с бегающим взглядом и жёлтыми от никотина пальцами, нервно теребит воротник халата. Выслушав тебя, он слишком быстро говорит: «Молодой человек, в кампусе сотни запахов. Лаборатория работает, это норма. Не накручивайте себя и других, это опасно для вашей репутации». Он избегает смотреть на твой телефон.",
+      background: "https://images.unsplash.com/photo-1532094349884-543bc1118b3d?w=1920&q=80",
+      choices: [
+        { text: "🎯 Молча положить на стол фото этикетки «Rea...Chem», глядя ему прямо в глаза", eco: 2, rep: 1, next: 4 },
+        { text: "🦉 [Секрет] «Профессор, это же диметилртуть. Я чувствую её сладковатый запах, а ваша левая перчатка уже пропиталась. Вы же сами писали о биоремедиации!»", eco: 4, rep: 2, next: 4, reqEco: 5 },
+        { text: "🤝 Вежливо извиниться за беспокойство, но мысленно отметить его панику как главную улику", eco: 1, rep: 0, next: 4 }
+      ]
+    },
+    {
+      location: "Столовая колледжа · Обеденный перерыв (13:30)",
+      text: "Гул голосов, звон посуды и запах пережаренного масла. К твоему столику подсаживается завхоз Петрович — грузный мужчина с добродушной, но хитрой улыбкой и мозолистыми руками. Он пододвигает тебе стакан компота: «Слышал, ты тут стоками интересуешься. Советую не лезть в чужие дела. Некоторые люди не любят, когда им мешают зарабатывать на утилизации. Понимаешь?». Его глаза перестают улыбаться.",
+      background: "https://images.unsplash.com/photo-1564981797816-1043664bf78d?w=1920&q=80",
+      choices: [
+        { text: "🕵️ Спокойно спросить: «А кто именно зарабатывает, Петрович? И на чьей территории?», держа руку на телефоне", eco: 1, rep: 2, next: 5 },
+        { text: "😶 Кивнуть и сказать: «Да я просто химичку ищу», делая вид, что не понял намёка", eco: 0, rep: 1, next: 5 },
+        { text: "💰 Улыбнуться в ответ и тихо намекнуть: «Может, найдём способ разделить эту прибыль?», проверяя его реакцию", eco: -2, rep: 1, next: 5 }
+      ]
+    },
+    {
+      location: "Лабораторный корпус · Ночная смена (23:15)",
+      text: "Кампус погружён в тишину, слышен только шум дождя и далёкий вой сирены. Ты пробираешься к задней двери лаборатории. В щель приоткрытой двери виден свет: двое мужчин в серых спецовках переливают густую зеленоватую жидкость из канистр с логотипом «ReactChem» прямо в раковину, соединённую с ливнёвкой. Воздух в коридоре уже начинает щипать глаза.",
+      background: "https://images.unsplash.com/photo-1579165466741-7f35a4755657?w=1920&q=80",
+      timer: 15,
+      neutralChoice: 1,
+      choices: [
+        { text: "📸 Достать телефон и снять происходящее в режиме беззвучной съёмки, прячась за углом", eco: 2, rep: 1, next: 6 },
+        { text: "🚨 Немедленно набрать 112 и чётко назвать адрес и суть преступления, даже если это спугнёт их", eco: 3, rep: 0, next: 6 },
+        { text: " Выйти из тени и громко сказать: «Я знаю, что вы делаете. Давайте договоримся», блефуя", eco: -1, rep: 2, next: 6 }
+      ]
+    },
+    {
+      location: "Кабинет директора · Решающий момент (09:00)",
+      text: "Солнечный свет бьёт в панорамные окна, но в кабинете холодно. Директор сидит за массивным столом, сложив руки в замок. Петрович стоит у двери, скрестив руки. «Мы ценим твою... бдительность, — начинает директор ледяным тоном. — Но компания ReactChem — наш спонсор. Закрой глаза на этот мелкий инцидент, и твоя стипендия будет увеличена втрое до конца обучения. Или шуми, но тогда мы найдём нарушения в твоём личном деле. Выбор за тобой».",
+      background: "https://images.unsplash.com/photo-1564981797816-1043664bf78d?w=1920&q=80",
+      timer: 15,
+      neutralChoice: 1,
+      choices: [
+        { text: "🌍 Встать, оставить флешку с видео и пробами на столе: «Моя цена не продаётся. Инспекция уже ждёт»", eco: 3, rep: -1, next: 7 },
+        { text: "📰 Сделать вид, что согласен, но тут же выложить все улики в студенческий Telegram-канал и СМИ", eco: 2, rep: 2, next: 7 },
+        { text: "💰 Опустить глаза и тихо сказать: «Хорошо. Я ничего не видел», чувствуя, как внутри всё сжимается", eco: -3, rep: 3, next: 7 }
+      ]
+    },
+    {
+      location: "Финал · Итоги расследования",
+      text: "Дождь за окном стих. Твоё расследование завершено, и пришло время узнать, какой след ты оставил в истории этого кампуса...",
+      background: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1920&q=80",
+      choices: [],
+      ending: true
+    }
+  ];
+
+  // === УПРАВЛЕНИЕ ДОСТИЖЕНИЯМИ ===
+  function unlockAchievement(key) {
+    if (!achievements[key]) {
+      achievements[key] = true;
+      playSound('achievement');
+      showToast(achievementData[key].title, achievementData[key].desc);
+      saveGame();
+    }
+  }
+
+  function showToast(title, desc) {
+    const toast = document.getElementById('toast');
+    if (!toast) return;
+    toast.innerHTML = '<strong>' + title + '</strong><br><span style="font-size: 14px; font-weight: normal;">' + desc + '</span>';
+    toast.classList.add('show');
+    setTimeout(() => { toast.classList.remove('show'); }, 3500);
+  }
+
+  // === СОХРАНЕНИЕ И ЗАГРУЗКА ===
+  function saveGame() {
+    try {
+      const state = { eco, rep, currentScene, achievements, choiceHistory };
+      localStorage.setItem('ecoDetectiveSave', JSON.stringify(state));
+    } catch (e) {}
+  }
+
+  function loadGame() {
+    try {
+      const saved = localStorage.getItem('ecoDetectiveSave');
+      if (saved) {
+        const state = JSON.parse(saved);
+        eco = state.eco || 0;
+        rep = state.rep || 0;
+        currentScene = state.currentScene || 0;
+        achievements = state.achievements || {};
+        choiceHistory = state.choiceHistory || [];
+        updateStats();
+        return true;
+      }
+    } catch (e) {}
+    return false;
+  }
+
+  // === ТАЙМЕР ===
+  function startTimer(duration, neutralIndex) {
+    clearInterval(timerInterval);
+    let timeLeft = duration;
+    const timerText = document.getElementById('timerText');
+    const timerBar = document.getElementById('timerBar');
+
+    if (timerBar) {
+      timerBar.style.transition = 'none';
+      timerBar.style.width = '100%';
+      void timerBar.offsetWidth;
+      timerBar.style.transition = 'width ' + duration + 's linear';
+      timerBar.style.width = '0%';
+    }
+
+    timerInterval = setInterval(() => {
+      timeLeft--;
+      if (timerText) {
+        timerText.textContent = '⏳ Осталось: ' + timeLeft + ' сек';
+        if (timeLeft <= 3) playSound('tick');
+      }
+      if (timeLeft <= 0) {
+        clearInterval(timerInterval);
+        makeChoice(neutralIndex, true);
+      }
+    }, 1000);
+  }
+
+  // === ОТРИСОВКА ФОНА ===
+  function changeBackground(url) {
+    try {
+      const bg = document.getElementById('background');
+      if (!bg) return;
+      bg.style.opacity = '0';
+      setTimeout(() => {
+        bg.style.backgroundImage = 'url(' + url + ')';
+        bg.style.opacity = '1';
+      }, 500);
+    } catch (e) {}
+  }
+
+  // === ОБНОВЛЕНИЕ СЧЁТЧИКА ===
+  function updateStats() {
+    try {
+      const ecoEl = document.getElementById('ecoValue');
+      const repEl = document.getElementById('repValue');
+      if (ecoEl) ecoEl.textContent = eco;
+      if (repEl) repEl.textContent = rep;
+    } catch (e) {}
+  }
+
+  // === ПЕРЕЗАПУСК ИГРЫ ===
+  function restartGame() {
+    playSound('click');
+    eco = 0;
+    rep = 0;
+    currentScene = 0;
+    achievements = {};
+    choiceHistory = [];
+    try { localStorage.removeItem('ecoDetectiveSave'); } catch (e) {}
+    updateStats();
+    renderScene(0);
+  }
+
+  // === ОТРИСОВКА СЦЕНЫ ===
+  function renderScene(index) {
+    try {
+      clearInterval(timerInterval);
+      const scene = scenes[index];
+      const container = document.getElementById('sceneContainer');
+      
+      if (!container) {
+        console.error('sceneContainer не найден!');
+        return;
+      }
+      
+      if (!scene) {
+        console.error('Сцена ' + index + ' не найдена!');
+        container.innerHTML = '<p>Ошибка: сцена не найдена</p>';
+        return;
+      }
+
+      console.log('Рендерим сцену ' + index + ':', scene.location);
+
+      if (scene.background) changeBackground(scene.background);
+      if (scene.ending) { renderEnding(); return; }
+
+      let html = '<div class="scene" id="sceneBlock">';
+      html += '<div class="scene-location">' + scene.location + '</div>';
+      html += '<div class="scene-text">' + scene.text + '</div>';
+      
+      if (scene.timer) {
+        html += '<div style="margin-bottom: 10px; color: #ff6b6b; font-weight: bold; text-align: right;" id="timerText">⏳ Осталось: ' + scene.timer + ' сек</div>';
+        html += '<div style="width: 100%; height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; margin-bottom: 20px; overflow: hidden;">';
+        html += '<div id="timerBar" style="width: 100%; height: 100%; background: #ff6b6b;"></div>';
+        html += '</div>';
+      }
+      
+      html += '<div class="choices" id="choicesBlock">';
+
+      scene.choices.forEach((choice, i) => {
+        const isDisabled = choice.reqEco && eco < choice.reqEco;
+        const disabledAttr = isDisabled ? 'disabled title="Требуется уровень Эко: ' + choice.reqEco + '"' : '';
+        const btnText = isDisabled ? choice.text.replace('[Секрет]', '[Закрыто]') : choice.text;
+        html += '<button class="choice-btn" data-index="' + i + '" ' + disabledAttr + '>' + btnText + '</button>';
+      });
+
+      html += '</div></div>';
+      
+      console.log('HTML готов, вставляем в контейнер...');
+      container.innerHTML = html;
+      console.log('HTML вставлен. Проверяем элементы...');
+
+      // Анимация появления
+      setTimeout(() => {
+        const sceneBlock = document.getElementById('sceneBlock');
+        if (sceneBlock) {
+          sceneBlock.classList.add('active');
+          console.log('sceneBlock активирован');
+        }
+        setTimeout(() => {
+          const choicesBlock = document.getElementById('choicesBlock');
+          if (choicesBlock) {
+            choicesBlock.classList.add('active');
+            console.log('choicesBlock активирован');
+          }
+        }, 150);
+      }, 50);
+
+      // Обработчики кнопок
+      const buttons = document.querySelectorAll('.choice-btn');
+      console.log('Найдено кнопок:', buttons.length);
+      buttons.forEach(btn => {
+        btn.addEventListener('click', function(e) {
+          if (btn.disabled) return;
+          const choiceIndex = parseInt(btn.dataset.index);
+          makeChoice(choiceIndex, false);
+        });
+      });
+
+      // Таймер
+      if (scene.timer) {
+        setTimeout(() => startTimer(scene.timer, scene.neutralChoice), 200);
+      }
+      
+      console.log('Сцена ' + index + ' успешно отрисована');
+    } catch (e) {
+      console.error('Ошибка в renderScene:', e);
+      const container = document.getElementById('sceneContainer');
+      if (container) container.innerHTML = '<p style="color: red;">Ошибка: ' + e.message + '</p>';
+    }
+  }
+
+  // === ОБРАБОТКА ВЫБОРА ===
+  function makeChoice(choiceIndex, isAuto) {
+    try {
+      clearInterval(timerInterval);
+      if (!isAuto) playSound('click');
+
+      const scene = scenes[currentScene];
+      const choice = scene.choices[choiceIndex];
+
+      eco += choice.eco;
+      rep += choice.rep;
+      choiceHistory.push('Сцена ' + (currentScene + 1) + ': ' + choice.text.substring(0, 40) + '...');
+
+      if (currentScene === 0) unlockAchievement('novice');
+      if (currentScene === 2 && (choiceIndex === 0 || choiceIndex === 1)) unlockAchievement('detective');
+
+      updateStats();
+      saveGame();
+
+      const sceneBlock = document.getElementById('sceneBlock');
+      const choicesBlock = document.getElementById('choicesBlock');
+      if (sceneBlock) sceneBlock.classList.remove('active');
+      if (choicesBlock) choicesBlock.classList.remove('active');
+
+      setTimeout(() => {
+        currentScene = choice.next;
+        renderScene(currentScene);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }, 400);
+    } catch (e) {
+      console.error('Ошибка в makeChoice:', e);
+    }
+  }
+
+  // === ФИНАЛ И РЕЗУЛЬТАТЫ ===
+  function getEnding() {
+    if (eco >= 8 && rep >= 3) {
+      return {
+        title: "🌟 КОНЦОВКА: ГЕРОЙ",
+        text: "Твои улики попали в экологическую инспекцию. Масштабное расследование выявило нелегальный сброс токсичных отходов. Директор и Петрович уволены, виновные оштрафованы. Ливнёвку очистили, а тебе вручили премию «За защиту окружающей среды». Ты стал легендой кампуса."
+      };
+    }
+    if (eco < 3 || rep < 0) {
+      return {
+        title: "💀 КОНЦОВКА: ЗЛОДЕЙ",
+        text: "Ты продал свои принципы. Стипендию получил, но каждую ночь тебе снится зеленоватая вода в ливнёвке. Через год в местной реке началась массовая гибель рыбы. Ты знал правду — и молчал. У всего есть цена, и твоя оказалась слишком низкой."
+      };
+    }
+    return {
+      title: "️ КОНЦОВКА: НЕЙТРАЛ",
+      text: "Твоё расследование зашло в тупик. Улик оказалось недостаточно для серьёзного дела, но и забыть ты не смог. Сброс химикатов прекратился — возможно, виновники просто сменили место. Ты продолжил учёбу, но теперь смотришь на мир другими глазами."
+    };
+  }
+
+  function renderEnding() {
+    try {
+      clearInterval(timerInterval);
+      const ending = getEnding();
+      if (ending.title.includes('ГЕРОЙ')) unlockAchievement('hero');
+
+      const achList = Object.keys(achievements).length > 0 
+        ? Object.keys(achievements).map(k => '<li>✅ ' + achievementData[k].title + ': ' + achievementData[k].desc + '</li>').join('')
+        : '<li>❌ Нет полученных достижений</li>';
+
+      const container = document.getElementById('sceneContainer');
+      if (!container) return;
+
+      container.innerHTML = 
+        '<div class="scene active ending">' +
+        '<h2>' + ending.title + '</h2>' +
+        '<div class="result">' + ending.text + '</div>' +
+        '<div class="results-stats">' +
+        '<h3>📊 Статистика прохождения</h3>' +
+        '<p>🌱 Итоговая эко-осознанность: <strong>' + eco + '</strong></p>' +
+        '<p>⭐ Итоговая репутация: <strong>' + rep + '</strong></p>' +
+        '<p>🔍 Сделано выборов: <strong>' + choiceHistory.length + '</strong></p>' +
+        '<h3>🏆 Достижения</h3>' +
+        '<ul style="list-style: none; padding: 0;">' + achList + '</ul>' +
+        '</div>' +
+        '<button class="restart-btn" id="shareBtn">📋 Поделиться результатом</button>' +
+        '<button class="restart-btn secondary" id="restartBtn">🔄 Начать заново</button>' +
+        '</div>';
+
+      document.getElementById('shareBtn').addEventListener('click', () => shareResult(ending.title));
+      document.getElementById('restartBtn').addEventListener('click', restartGame);
+    } catch (e) {
+      console.error('Ошибка в renderEnding:', e);
+    }
+  }
+
+  function shareResult(endingTitle) {
+    const text = '🕵️ Я прошел "Эко-Детектив: Тайна кампуса"!\n\n🏆 Концовка: ' + endingTitle + '\n🌱 Эко-осознанность: ' + eco + '\n⭐ Репутация: ' + rep + '\n🔍 Достижений: ' + Object.keys(achievements).length + '/3\n\nПопробуй и ты!';
+    
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text).then(() => {
+        alert('✅ Результат скопирован в буфер обмена!');
+      }).catch(() => {
+        prompt('Скопируйте текст вручную:', text);
+      });
+    } else {
+      prompt('Скопируйте текст вручную:', text);
+    }
+  }
+
+  // === АВТОМАТИЧЕСКИЙ СТАРТ ===
+  console.log('Скрипт загружен. scenes.length =', scenes.length);
+  
+  function startGame() {
+    console.log('Запуск игры...');
+    updateStats();
+    renderScene(0);
+  }
+
+  if (document.readyState === 'loading') {
+    window.addEventListener('DOMContentLoaded', startGame);
+  } else {
+    startGame();
+  }
+</script>
+
+</body>
+</html>
